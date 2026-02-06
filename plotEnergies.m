@@ -19,7 +19,10 @@ function plotEnergies( type, obs, material, lambda, cmax, rmax )
 if nargin<5
     cmax = [];
 end
-
+%manque de condition rmax
+if nargin<6
+    rmax = [];
+end
 % plot total energy
 if isfield(type,'movieTotalEnergy') && type.movieTotalEnergy
     if obs.Npsi==1
@@ -84,7 +87,19 @@ for i1=1:Nt
     ax1 = subplot(n,1,1,'replace');
     surf( ax1, x, z, val(:,:,i1,1)' );
     view(2); shading flat; box on;
-    cb1 = colorbar; colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
+   % cb1 = colorbar; colormap(ax1,'pink'); clim(ax1,[0 cmax(1)])
+    % --- MATLAB R2019b Compatibility Workaround Start ---
+
+% In R2022a and later, 'clim' is used to set color limits.
+% For R2019b, we must use the legacy 'caxis' function. [cite: 52]
+    cb1 = colorbar; 
+    colormap(ax1, 'pink'); 
+
+% Original line (R2022a+): clim(ax1, [0 cmax(1)])
+% Replacement line (R2019b compatible):
+    caxis(ax1, [0 cmax(1)]); 
+
+% --- Compatibility Workaround End ---
     set(ax1,'XLim',[min(x) max(x)],'YLim',[min(z) max(z)],'XTick',[]);
     title(cb1,'P energy')
     title(ax1,['Total Energy Density, time t = ' num2str(obs.t(i1)) 's'])
@@ -92,7 +107,11 @@ for i1=1:Nt
         ax2 = subplot(n,1,2,'replace');
         surf( ax2, x, z, val(:,:,i1,2)' );
         view(2); shading flat; box on;
-        cb2 = colorbar; clim(ax2,[0 cmax(2)]);
+        %cb2 = colorbar; clim(ax2,[0 cmax(2)]);
+        % Original line (R2022a+): clim(ax1, [0 cmax(1)])
+        % Replacement line (R2019b compatible):
+        cb2 = colorbar; caxis(ax1, [0 cmax(2)]); 
+        % --- Compatibility Workaround End ---
         cmap = colormap(ax2,'pink'); colormap(ax2,cmap(end:-1:1,:));
         set(ax2,'XLim',[min(x) max(x)],'YLim',[min(z) max(z)], ...
             'Position',[.13 .23 .6964 .3412]);
@@ -100,7 +119,28 @@ for i1=1:Nt
         set(cb2,'position',[.8411 .2298 .05 .31]);
     end
     % export graphics
-    exportgraphics(gcf,'movieTotalEnergy.gif','Append',lappend);
+    %exportgraphics(gcf,'movieTotalEnergy.gif','Append',lappend);
+    % --- MATLAB R2019b Compatibility Workaround Start ---
+
+% Capture the current plot as a frame 
+    frame = getframe(gcf);
+    im = frame2im(frame);
+    [imind, cm] = rgb2ind(im, 256);
+
+% Set the output filename
+    filename = 'movieTotalEnergy.gif';
+
+% Check if we are appending to an existing file or creating a new one
+% 'lappend' is a boolean variable from your original code
+    if ~lappend
+    % Create the file for the first frame
+        imwrite(imind, cm, filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.1);
+    else
+     % Append subsequent frames to the file [cite: 115]
+        imwrite(imind, cm, filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.1);
+    end
+
+% --- Compatibility Workaround End ---
     lappend = true;
 end
 
@@ -116,7 +156,7 @@ Nt = length(obs.t);
 [psi2pi,Ec,Ei] = directionEnergy( obs, material, lambda, sensors);
 
 % estimate rmax and make sure low values are readable
-if nargin<6 | isempty(rmax)
+if nargin<5 | isempty(rmax)%  6 change 5
     rmax = squeeze(max(max(max(Ei,[],1),[],2),[],4));
 end
 
@@ -216,12 +256,24 @@ end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function plotTimeHistory(obs,type)
 
 % source to sensors distance
-s = obs.positionSources(1,:);
-di = type.sensors - repmat(s,size(type.sensors,1),1);
-r = vecnorm(di')';
+% s = obs.positionSources(1,:);
+% di = type.sensors - repmat(s,size(type.sensors,1),1);
+% r = vecnorm(di')';
+% 1. Check if the field exists. If not, default to origin [0,0,0]
+if isfield(obs, 'positionSources')
+    s = obs.positionSources(1,:);
+else
+    s = [0, 0, 0]; % Default source position
+end
+
+% 2. Calculate distance using displacement vectors
+di = type.sensors - repmat(s, size(type.sensors, 1), 1);
+r = vecnorm(di')'; 
+% --- END OF FIX ---
 
 n = 1+~obs.acoustics;
 

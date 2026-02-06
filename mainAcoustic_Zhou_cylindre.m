@@ -1,0 +1,113 @@
+%% Zhou 2021 Figure 4 Reproduction - Finite Cylinder Case
+% ?????????
+% 1. Frame: Cylindrical (r, phi, z)
+% 2. Boundaries: ????? + ????
+% 3. Observation: ????(Slices)???(Rings)????
+
+%clear; clc; close all;
+
+%% 1. Geometry (?????????)
+% ?????L = 10mm, w = 2.5mm (L/4) -> ?? r = 1.25mm
+L_sample = 10e-3; 
+r_sample = 1.25e-3; 
+
+%  ????????????? cylindrical frame
+geometry = struct('dimension', 3, ...
+                  'frame', 'cylindrical'); 
+
+% ???? (Boundaries) - ????? (Reflection Coeff ? 1)
+% dir=4 -> ???? (r_cylindrical), ??? r = r_sample
+geometry.bnd(1) = struct('dir', 4, 'val', r_sample); 
+% dir=3 -> Z???, ??? z = L_sample
+geometry.bnd(2) = struct('dir', 3, 'val', L_sample); 
+geometry.bnd(3) = struct('dir', 3, 'val', 0);          % Bottom (Z=0)
+%% 2. Point Source (???)
+%  ????????? [0 0 1] (Z?)???? uniform ????????
+source = struct('numberParticles', 1e5, ... % ????????????
+                'type', 'point', ...
+                'position', [0 0 0], ...    % ????
+                'direction', [0 0 1], ...   % ??????????
+                'radial', 0, ...
+                'lambda', 1e-4); 
+
+%% 3. Observation (??????????)
+%  ???????????????????(Bin)?????
+
+% Z? (Axial): ?????????
+% ?????? L=10mm ?????????? bin?????? bin ?? 10mm ??
+dz = 0.5e-3; % ????
+obs_z_bins = 0 : dz : (L_sample + dz); 
+
+% X? (Radius): 
+% ???????? [0, r_sample]????????
+obs_r_bins = [0 r_sample];
+
+% Y? (Phi/Azimuth): 
+% [cite: 1348] ????????? [-pi, pi]
+obs_phi = [-pi pi];
+
+% Time (??): ???? 20 ????? (?? Figure 4)
+V_wave = 450; 
+tb = L_sample / V_wave; % Ballistic time (L/V)
+obs_time = 0 : (tb/50) : (20 * tb); 
+
+observation = struct('x', obs_r_bins, ...    % R (Rings)
+                     'y', obs_phi, ...       % Phi (Full integration)
+                     'z', obs_z_bins, ...    % Z (Slices)
+                     'directions', [0 pi], ...
+                     'time', obs_time);
+
+%% 4. Material Properties 
+freq = 1e6;       
+acoustics = true; % ????
+corr_func = 'exp'; % ??????
+
+% =======================================================
+
+calibrated_variance = 0.1236;   % Epsilon (Variance)      1(0.123)   3(0.2153)  10(0.39)
+calibrated_corr_len = 0.0003; % Correlation Length a (meters)    0.0003
+% =======================================================
+
+material = MaterialClass(geometry, freq, acoustics, V_wave, ...
+                         [calibrated_variance calibrated_variance], ...
+                         -0.5, corr_func, calibrated_corr_len);
+
+fprintf('Preparing Scattering Matrix...\n');
+material = prepareSigma(material, geometry.dimension);
+fprintf('------------------------------------------------\n');
+fprintf('Current Mean Free Path l_s = %.3f mm\n', material.meanFreePath*1000);
+fprintf('Ratio L/l_s = %.2f\n', L_sample / material.meanFreePath);
+fprintf('------------------------------------------------\n');
+
+%% 5. Simulation (????)
+fprintf('Running Simulation (Finite Cylinder)...\n');
+% ????????????????? radiativeTransferUnbounded (????????)
+% ??? mainAcoustics ????????
+obs = radiativeTransferUnbounded(geometry, source, material, observation);
+
+%% 6. Data Processing & Plotting (Modified)
+% 1. ?? Z ????? L=10mm ???
+[~, idx_z] = min(abs(obs.z - L_sample)); 
+fprintf('Extracting energy at Z-slice: %.3f mm\n', obs.z(idx_z)*1000);
+
+% 2. ????
+% ?? obs.energyDensity ?????? [Nx=1, Nz, Nt] (??????1?bin)
+% ????????????????
+E_curve = squeeze(obs.energyDensity(:, idx_z, :)); 
+
+% 3. ?????
+t_norm = obs.t / tb;
+
+% 4. ??
+figure('Color', 'w', 'Name', 'Zhou 2021 Fig 4 Reproduction');
+semilogy(t_norm, E_curve, 'r-', 'LineWidth', 2); % ?????????
+grid on;
+
+xlabel('Normalized Time (t / t_b)', 'FontSize', 12);
+ylabel('Energy Density (J/m^3)', 'FontSize', 12);
+title(sprintf('Finite Cylinder (L/l_s = %.1f)', L_sample/material.meanFreePath), 'FontSize', 14);
+xline(1, 'k--', 'Ballistic Arrival');
+xlim([0 20]);
+
+% ?????????????????????????????
+% ylim([1e6 1e10]); % ????????????

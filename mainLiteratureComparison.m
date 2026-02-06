@@ -30,7 +30,7 @@ function mainLiteratureComparison(type)
 %     scattering media. Journal of Geophysical Research: Solid Earth (2000)
 
 if nargin==0
-    mainLiteratureComparison('all')
+    mainLiteratureComparison('2dIsotropicElastic')
 else
     type = lower(type);
     switch type
@@ -79,7 +79,7 @@ else
             figure; hold on; grid on; box on;
             h1 = semilogy( obs.t, Eus(inds,:), '-k' );
             h2 = semilogy( obs.t, EY(inds,:), '-r' );
-            h3 = semilogy( obs.t, EP(inds,:), '-b' );
+            h3 = semilogy( obs.t, EP(inds,:), '-green' );
             h4 = semilogy( obs.t, Ediff(inds,:), ':r' );
             set(gca, 'YScale', 'log'); ylim([1e-5 1]);
             legend( [h1(1), h2(1), h3(1), h4(1)], ...

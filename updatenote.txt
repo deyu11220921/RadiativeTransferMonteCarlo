@@ -1,0 +1,114 @@
+% =========================================================================
+% MATLAB R2019b COMPATIBILITY FIXES FOR MONTE CARLO SIMULATION
+% =========================================================================
+% This script consolidates all necessary code modifications to run the
+% simulation on MATLAB versions older than R2022a (specifically R2019b).
+% =========================================================================
+
+% -------------------------------------------------------------------------
+% FIX 1: REPLACING 'tensorprod' (Spatial and Directional Integration)
+% Location: radiativeTransferUnbounded.m (around line 52)
+% Reason: 'tensorprod' was introduced in R2022a.
+% -------------------------------------------------------------------------
+
+% --- START OF REPLACEMENT FOR tensorprod ---
+% This block performs weighted integration of energy density over spatial 
+% and directional dimensions.
+
+% 1. Get the total number of time steps (Nt)
+Nt = length(observation.time); 
+
+% 2. Determine the number of energy components (1 for scalar, 2 for acoustics)
+if exist('acoustics', 'var') && ~acoustics
+    numComponents = 2;
+else
+    numComponents = 1;
+end
+
+% 3. Replace inner tensorprod (Directional contraction with d2)
+% We align weights and sum over the direction dimension (Dim 2)
+d2_weight = reshape(d2, [1, length(d2), 1]);
+inner_result = sum(obs.energyDensity .* d2_weight, 2);
+
+% 4. Reshape data to [SpatialPoints x TimeSteps x Components]
+intermediate_matrix = reshape(inner_result, [length(d1), Nt, numComponents]);
+
+% 5. Replace outer tensorprod (Spatial contraction with d1)
+% This calculates the final energy intensity I(t)
+d1_weight = reshape(d1, [length(d1), 1, 1]);
+obs.energy = squeeze(sum(intermediate_matrix .* d1_weight, 1));
+% --- END OF REPLACEMENT ---
+
+
+% -------------------------------------------------------------------------
+% FIX 2: REPLACING 'clim' (Color Axis Control)
+% Location: plotEnergies.m > plotTotalEnergy (around line 87)
+% Reason: 'clim' was introduced in R2022a. Use legacy 'caxis' instead.
+% -------------------------------------------------------------------------
+
+% --- START OF REPLACEMENT FOR clim ---
+cb1 = colorbar; 
+colormap(ax1, 'pink'); 
+
+% Set color display limits for the intensity map
+% Original: clim(ax1, [0 cmax(1)])
+caxis(ax1, [0 cmax(1)]); 
+% --- END OF REPLACEMENT ---
+
+
+% -------------------------------------------------------------------------
+% FIX 3: REPLACING 'exportgraphics' (GIF Animation Export)
+% Location: plotEnergies.m > plotTotalEnergy (around line 115)
+% Reason: 'exportgraphics' was introduced in R2020a. 
+[cite_start]% Use 'getframe' and 'imwrite' to save energy evolution [cite: 247-248].
+% -------------------------------------------------------------------------
+
+% --- START OF REPLACEMENT FOR exportgraphics ---
+% Capture current frame for statistical convergence analysis
+frame = getframe(gcf);
+im = frame2im(frame);
+[imind, cm] = rgb2ind(im, 256);
+filename = 'movieTotalEnergy.gif';
+
+% Save or append to the GIF file
+if ~lappend
+    % Initialize new GIF file
+    imwrite(imind, cm, filename, 'gif', 'Loopcount', inf, 'DelayTime', 0.1);
+else
+    % Append current frame to existing GIF
+    imwrite(imind, cm, filename, 'gif', 'WriteMode', 'append', 'DelayTime', 0.1);
+end
+% --- END OF REPLACEMENT ---
+
+% -------------------------------------------------------------------------
+% [NEW FIX] FIX 4: RADIAL PARAMETER TYPE-CHECKING
+% Location: initializeParticle.m (around line 25-30)
+% Issue: "Dot indexing is not supported" when source.radial is a number (0).
+% Reason: The code expected a struct with GridVectors but received a scalar.
+% -------------------------------------------------------------------------
+
+% --- START OF REPLACEMENT FOR RADIAL INITIALIZATION ---
+% This fix allows source.radial to be either a numeric value (e.g., 0)
+% or a complex structure, making the point source initialization robust.
+
+if ~isfield(source,'radial') || isempty(source.radial)
+    % Case A: Default initialization using lambda if field is missing
+    r = abs(randn(N,1)*source.lambda/2);
+else
+    % Case B: Check the data type of source.radial to avoid indexing errors
+    if isstruct(source.radial)
+        % Original logic: handles structured grid data
+        Rmax = source.radial.GridVectors{1}(end);
+        invcdfsource = inverseCDF(source.radial,d,Rmax);
+        r = invcdfsource(rand(N,1));
+    else
+        % New robust logic: handles numeric values (like source.radial = 0)
+        % This treats the source as a perfect point source
+        Rmax = source.radial; 
+        r = repmat(Rmax, N, 1); % Assign constant radius to all particles
+    end
+end
+% --- END OF FIX ---
+% =========================================================================
+% END OF COMPATIBILITY FIXES
+% =========================================================================

@@ -461,7 +461,8 @@ for i1 = 1:Nt
 
     % draw scattering angle around direction of propagation
     if P.d==2
-        phi = randi([0 1],Nscat,1,'logical');
+        %phi = randi([0 1],Nscat,1,'logical');
+        phi = logical(randi([0 1], Nscat, 1));
         P.perp(scat,:) = ((-1).^phi).*P.perp(scat,:);
     elseif P.d==3
         phi = (2*pi)*rand(Nscat,1);

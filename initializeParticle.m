@@ -19,13 +19,27 @@ switch source.type
         % radius follows a Gaussian law with standard deviation lambda, and
         % angle follows a uniform law. If radial option is used, a 
         % user-defined function (of the radius) is used instead.
-        if ~isfield(source,'radial') || isempty(source.radial)
-            r = abs(randn(N,1)*source.lambda/2);
-        else
+       % --- MATLAB R2019b Robustness Fix for Point/Plane Source Initialization ---
+% This block prevents the "Dot indexing" error by checking the data type of source.radial.
+
+    if ~isfield(source,'radial') || isempty(source.radial)
+    % Case 1: Default initialization if 'radial' field is missing or empty
+        r = abs(randn(N,1)*source.lambda/2);
+    else
+    % Case 2: Check if 'radial' is a structure (modern format) or a simple number
+        if isstruct(source.radial)
+        % Using the modern structure logic with GridVectors
             Rmax = source.radial.GridVectors{1}(end);
             invcdfsource = inverseCDF(source.radial,d,Rmax);
             r = invcdfsource(rand(N,1));
+        else
+        % Case 3: Using a simple numeric value (e.g., source.radial = 0)
+        % This treats the source as a perfect point where all particles start at Rmax [cite: 242-246]
+            Rmax = source.radial; 
+            r = repmat(Rmax, N, 1); % Fill the initial radius vector with the specified value
         end
+    end
+% --- End of Fix ---
 
         % initial angles and directions
         if d==2
