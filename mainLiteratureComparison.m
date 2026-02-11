@@ -30,7 +30,7 @@ function mainLiteratureComparison(type)
 %     scattering media. Journal of Geophysical Research: Solid Earth (2000)
 
 if nargin==0
-    mainLiteratureComparison('2dIsotropicElastic')
+    mainLiteratureComparison('3dIsotropicAcoustic')
 else
     type = lower(type);
     switch type

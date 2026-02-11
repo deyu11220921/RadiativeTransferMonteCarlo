@@ -3,7 +3,11 @@ function obs = radiativeTransferUnbounded( geometry, source, material, observati
 % physics
 d = geometry.dimension;
 acoustics = material.acoustics;
-material.timeSteps = 0;
+
+if ~isfield(material,'timeSteps')
+    material.timeSteps = 0; % default value
+end
+
 if ~isfield(geometry,'frame')
     geometry.frame = 'spherical';
 end
@@ -16,7 +20,7 @@ Np = ceil(source.numberParticles/Npk); % number of packets
 [ obs, E, bins, ibins, vals, Nt, t , d1, d2 ] = ...
          initializeObservation( geometry, acoustics, observation, Np*Npk );
 
-% prepare scattering cross sections 
+% prepare scattering cross sections
 material = prepareSigma( material, d );      
 
 % loop on packages of particles
