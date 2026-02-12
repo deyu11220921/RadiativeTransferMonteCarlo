@@ -14,7 +14,7 @@ source = struct( 'numberParticles', 1e5 , ...
                  'lambda', eps ); 
 
 %% 3. factor
-factor = 1;
+factor = 3;
 L = 10; dr = 0.25; m = ceil(L/dr);
 % Spatial bins (Radius R)
 if rem(m,2)==0
@@ -57,17 +57,19 @@ y_sim_mc= en(end, :) * 1e9; %
 x_sim = obs.t / tb;       % 
 
 Qi = 500;           
-f = 1e6;             
-omega = 2 * pi * f; ; 
+           
+omega = 2 * pi * freq ; 
+att = exp(- (omega * observation.time) / Qi);
+y_sim_mc = y_sim_mc .* att;
 
 % --- 1. Load specific datasets ---
-ref1 = loadMyData(1); %  factor=1
-ref3 = loadMyData(2); %  factor=3
-ref10 = loadMyData(3); % factor=10
+ref1 = Datainifinie(1); %  factor=1
+ref3 = Datainifinie(2); %  factor=3
+ref10 = Datainifinie(3); % factor=10
 
 h1 = semilogy(x_sim, y_sim_mc, 'k-', 'LineWidth', 2); 
 hold on; 
-h2 = semilogy(ref1(:,1), ref1(:,2), 'r--', 'DisplayName', 'Reference 1 (Long)');
+h2 = semilogy(ref3(:,1), ref3(:,2), 'r--', 'DisplayName', 'Reference 1 (Long)');
 
 % --- 3. Figure Decorations ---
 grid on;
@@ -79,5 +81,5 @@ xline(1, 'r--', 'Ballistic Arrival', 'LabelVerticalAlignment', 'bottom');
 % Set axes limits
 xlim([0 20]);
 % Add a legend to distinguish the two lines
-legend([h1, h2], {'Monte Carlo', 'Reference Data (h2)'}, 'Location', 'northeast');
+legend([h1, h2], {'Monte Carlo', 'Reference Data'}, 'Location', 'northeast');
 hold off; 

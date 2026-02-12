@@ -1,4 +1,4 @@
-function data = loadMyData(tableIndex)
+function data = Datainifinie(tableIndex)
     % LOADMYDATA - Returns one of three reference datasets based on index
     % 
     % Usage: 

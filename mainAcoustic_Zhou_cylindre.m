@@ -25,7 +25,7 @@ geometry.bnd(3) = struct('dir', 3, 'val', 0);
 
 %% 2. Point Source
 % Initial direction set to [0 0 1] (Z-axis) to avoid backward scattering at t=0
-source = struct('numberParticles', 1e6, ... % Number of particles (Increase to 1e6 for smoother curves)
+source = struct('numberParticles', 1e5, ... % Number of particles (Increase to 1e6 for smoother curves)
                 'type', 'point', ...
                 'position', [0 0 0], ...    % Source position at origin
                 'direction', [0 0 1], ...   % Direction pointing into the medium
